@@ -4,8 +4,10 @@
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -46,4 +48,16 @@ private:
 
   VkQueue _graphicsQueue;
   uint32_t _graphicsQueueFamily;
+
+  void createSwapchain();
+  VkSwapchainKHR _swapchain;
+  VkFormat _swapchainImageFormat;
+  std::vector<VkImage> _swapchainImages;
+  std::vector<VkImageView> _swapchainImageViews;
+  VkExtent2D _swapchainExtent;
+
+  VkPipelineLayout _pipelineLayout;
+  void createGraphicsPipeline();
+  VkShaderModule createShaderModule(const std::vector<char> &code);
+  static std::vector<char> readFile(const std::string &filename);
 };
