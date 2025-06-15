@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -47,6 +48,7 @@ private:
   void pickPhysicalDevice();
 
   VkQueue _graphicsQueue;
+  VkQueue _presentQueue;
   uint32_t _graphicsQueueFamily;
 
   void createSwapchain();
@@ -71,5 +73,13 @@ private:
 
   VkCommandBuffer _commandBuffer;
   void createCommandBuffer();
-  void recordCommandBuffer();
+  void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+  void drawFrame();
+  VkSemaphore _imageAvailableSemaphore;
+  VkSemaphore _renderFinishedSemaphore;
+  VkFence _inFlightFence;
+
+  void createSyncObject();
+  void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };
