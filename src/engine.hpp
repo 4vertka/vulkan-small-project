@@ -60,4 +60,15 @@ private:
   void createGraphicsPipeline();
   VkShaderModule createShaderModule(const std::vector<char> &code);
   static std::vector<char> readFile(const std::string &filename);
+
+  VkRenderingAttachmentInfoKHR createRenderingAttachmentInfo();
+  VkRenderingInfoKHR
+  createRenderingInfo(VkRenderingAttachmentInfoKHR &colorAttachmentInfo);
+  VkPipeline _graphicsPipeline;
+
+  VkCommandPool _commandPool;
+  void createCommandPool();
+
+  VkCommandBuffer _commandBuffer;
+  void createCommandBuffer();
 };

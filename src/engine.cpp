@@ -21,6 +21,7 @@ void VulkanEngine::initVulkan() {
   createInstanceAndPhysicalDeviceAndQueue();
   createSwapchain();
   createGraphicsPipeline();
+  createCommandPool();
 }
 
 void VulkanEngine::mainLoop() {
@@ -36,6 +37,10 @@ void VulkanEngine::mainLoop() {
 }
 
 void VulkanEngine::cleanup() {
+
+  vkDestroyCommandPool(_device, _commandPool, nullptr);
+
+  vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
 
   vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
 
@@ -72,9 +77,17 @@ void VulkanEngine::createInstanceAndPhysicalDeviceAndQueue() {
 
   SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
+  VkPhysicalDeviceVulkan13Features features13{
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+
+  features13.dynamicRendering = true;
+  features13.synchronization2 = true;
+
   vkb::PhysicalDeviceSelector selector{final_instance};
-  auto physicalDeviceReturn =
-      selector.set_minimum_version(1, 3).set_surface(_surface).select();
+  auto physicalDeviceReturn = selector.set_minimum_version(1, 3)
+                                  .set_required_features_13(features13)
+                                  .set_surface(_surface)
+                                  .select();
 
   if (!physicalDeviceReturn) {
     throw std::runtime_error("failed to select physical device");
@@ -248,6 +261,41 @@ void VulkanEngine::createGraphicsPipeline() {
     throw std::runtime_error("failed to create pipeline layout");
   }
 
+  VkFormat colorFormat = VK_FORMAT_B8G8R8A8_SRGB;
+
+  VkPipelineRenderingCreateInfo renderingCreateInfo{};
+  renderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+  renderingCreateInfo.colorAttachmentCount = 1;
+  renderingCreateInfo.pColorAttachmentFormats = &colorFormat;
+  renderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+  renderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
+  VkGraphicsPipelineCreateInfo pipelineInfo{};
+  pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  pipelineInfo.stageCount = 2;
+  pipelineInfo.pStages = shaderStages;
+  pipelineInfo.pVertexInputState = &vertexInputInfo;
+  pipelineInfo.pInputAssemblyState = &inputAssembly;
+  pipelineInfo.pViewportState = &viewportState;
+  pipelineInfo.pRasterizationState = &rasterizer;
+  pipelineInfo.pMultisampleState = &multisampling;
+  pipelineInfo.pColorBlendState = &colorBlending;
+  pipelineInfo.pDynamicState = &dynamicState;
+  pipelineInfo.layout = _pipelineLayout;
+  pipelineInfo.renderPass = VK_NULL_HANDLE;
+  pipelineInfo.subpass = 0;
+
+  VkRenderingAttachmentInfoKHR renderingAttachmentInfo{
+      createRenderingAttachmentInfo()};
+
+  VkRenderingInfoKHR renderingInfo{
+      createRenderingInfo(renderingAttachmentInfo)};
+
+  pipelineInfo.pNext = &renderingCreateInfo;
+
+  vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+                            &_graphicsPipeline);
+
   vkDestroyShaderModule(_device, fragShaderModule, nullptr);
   vkDestroyShaderModule(_device, vertShaderModule, nullptr);
 }
@@ -284,3 +332,53 @@ VkShaderModule VulkanEngine::createShaderModule(const std::vector<char> &code) {
 
   return shaderModule;
 }
+
+VkRenderingAttachmentInfoKHR VulkanEngine::createRenderingAttachmentInfo() {
+
+  VkImageView currentImageView = _swapchainImageViews[0];
+
+  VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
+  colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+  colorAttachmentInfo.imageView = currentImageView;
+  colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  colorAttachmentInfo.resolveMode = VK_RESOLVE_MODE_NONE;
+  colorAttachmentInfo.resolveImageView = VK_NULL_HANDLE;
+  colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAttachmentInfo.clearValue.color = {0.0f, 0.0f, 0.0f, 1.0f};
+
+  return colorAttachmentInfo;
+}
+
+VkRenderingInfoKHR VulkanEngine::createRenderingInfo(
+    VkRenderingAttachmentInfoKHR &colorAttachmentInfo) {
+
+  VkRenderingInfoKHR renderingInfo{};
+  renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+  renderingInfo.renderArea.offset = {0, 0};
+  renderingInfo.renderArea.extent = _swapchainExtent;
+  renderingInfo.layerCount = 1;
+  renderingInfo.viewMask = 0;
+  renderingInfo.colorAttachmentCount = 1;
+  renderingInfo.pColorAttachments = &colorAttachmentInfo;
+  renderingInfo.pDepthAttachment = nullptr;
+  renderingInfo.pStencilAttachment = nullptr;
+
+  return renderingInfo;
+}
+
+void VulkanEngine::createCommandPool() {
+  VkCommandPoolCreateInfo commandPoolInfo{};
+  commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  commandPoolInfo.pNext = nullptr;
+  commandPoolInfo.queueFamilyIndex = _graphicsQueueFamily;
+  commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+  if (vkCreateCommandPool(_device, &commandPoolInfo, nullptr, &_commandPool) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("failed to create command pool");
+  }
+}
+
+void VulkanEngine::createCommandBuffer() {}
