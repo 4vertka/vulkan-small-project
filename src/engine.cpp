@@ -43,15 +43,15 @@ void VulkanEngine::mainLoop() {
 }
 
 void VulkanEngine::cleanup() {
-
-  vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
-  vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
-  vkDestroyFence(_device, _inFlightFence, nullptr);
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
+    vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
+    vkDestroyFence(_device, _inFlightFences[i], nullptr);
+  }
 
   vkDestroyCommandPool(_device, _commandPool, nullptr);
 
   vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
-
   vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
 
   for (auto imageView : _swapchainImageViews) {
@@ -64,7 +64,6 @@ void VulkanEngine::cleanup() {
   DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
 
   vkDestroySurfaceKHR(_instance, _surface, nullptr);
-
   vkDestroyInstance(_instance, nullptr);
 
   SDL_DestroyWindow(_window);
@@ -363,13 +362,15 @@ void VulkanEngine::createCommandPool() {
 
 void VulkanEngine::createCommandBuffer() {
 
+  _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
   VkCommandBufferAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.commandPool = _commandPool;
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount = 1;
+  allocInfo.commandBufferCount = (uint32_t)_commandBuffers.size();
 
-  if (vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffer) !=
+  if (vkAllocateCommandBuffers(_device, &allocInfo, _commandBuffers.data()) !=
       VK_SUCCESS) {
     throw std::runtime_error("failed to allocate command buffers");
   }
@@ -387,14 +388,14 @@ void VulkanEngine::recordCommandBuffer(VkCommandBuffer commandBuffer,
   }
 
   vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
-                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-  draw(commandBuffer, imageIndex);
+  drawGeometry(commandBuffer, imageIndex);
 
   vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
-                          VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     throw std::runtime_error("failed to record command buffer");
@@ -402,36 +403,38 @@ void VulkanEngine::recordCommandBuffer(VkCommandBuffer commandBuffer,
 }
 
 void VulkanEngine::drawFrame() {
-  vkWaitForFences(_device, 1, &_inFlightFence, VK_TRUE, UINT64_MAX);
+  vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE,
+                  UINT64_MAX);
 
-  vkResetFences(_device, 1, &_inFlightFence);
+  vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
   uint32_t imageIndex;
-  vkAcquireNextImageKHR(_device, _swapchain, UINT64_MAX,
-                        _imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+  VkResult result = vkAcquireNextImageKHR(
+      _device, _swapchain, UINT64_MAX, _imageAvailableSemaphores[currentFrame],
+      VK_NULL_HANDLE, &imageIndex);
 
-  vkResetCommandBuffer(_commandBuffer, 0);
+  vkResetCommandBuffer(_commandBuffers[currentFrame], 0);
 
-  recordCommandBuffer(_commandBuffer, imageIndex);
+  recordCommandBuffer(_commandBuffers[currentFrame], imageIndex);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-  VkSemaphore waitSemaphores[] = {_imageAvailableSemaphore};
+  VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[currentFrame]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = waitSemaphores;
   submitInfo.pWaitDstStageMask = waitStages;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &_commandBuffer;
+  submitInfo.pCommandBuffers = &_commandBuffers[currentFrame];
 
-  VkSemaphore signalSemaphores[] = {_renderFinishedSemaphore};
+  VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[currentFrame]};
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
 
-  if (vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFence) !=
-      VK_SUCCESS) {
+  if (vkQueueSubmit(_graphicsQueue, 1, &submitInfo,
+                    _inFlightFences[currentFrame]) != VK_SUCCESS) {
     throw std::runtime_error("failed to submit draw command buffer");
   }
 
@@ -446,9 +449,16 @@ void VulkanEngine::drawFrame() {
   presentInfo.pImageIndices = &imageIndex;
 
   vkQueuePresentKHR(_presentQueue, &presentInfo);
+
+  currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void VulkanEngine::createSyncObject() {
+
+  _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
   VkSemaphoreCreateInfo semaphoreInfo{};
   semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -456,18 +466,21 @@ void VulkanEngine::createSyncObject() {
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-  if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
-                        &_imageAvailableSemaphore) != VK_SUCCESS ||
-      vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
-                        &_renderFinishedSemaphore) != VK_SUCCESS ||
-      vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence) !=
-          VK_SUCCESS) {
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
+                          &_imageAvailableSemaphores[i]) != VK_SUCCESS ||
+        vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
+                          &_renderFinishedSemaphores[i]) != VK_SUCCESS ||
+        vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]) !=
+            VK_SUCCESS) {
 
-    throw std::runtime_error("failed to create semaphores");
+      throw std::runtime_error("failed to create semaphores");
+    }
   }
 }
 
-void VulkanEngine::draw(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
+                                uint32_t imageIndex) {
   VkImageView currentImageView = _swapchainImageViews[imageIndex];
 
   VkRenderingAttachmentInfoKHR colorAttachmentInfo{};

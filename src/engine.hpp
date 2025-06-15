@@ -34,6 +34,8 @@ private:
   VkExtent2D _windowExtent{1700, 900};
   bool closeEngine = false;
 
+  const int MAX_FRAMES_IN_FLIGHT = 2;
+
   VkDebugUtilsMessengerEXT _debugMessenger;
   void DestroyDebugUtilsMessengerEXT(VkInstance instance,
                                      VkDebugUtilsMessengerEXT debugMessenger,
@@ -73,15 +75,18 @@ private:
   VkCommandPool _commandPool;
   void createCommandPool();
 
-  VkCommandBuffer _commandBuffer;
   void createCommandBuffer();
   void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
   void drawFrame();
-  VkSemaphore _imageAvailableSemaphore;
-  VkSemaphore _renderFinishedSemaphore;
-  VkFence _inFlightFence;
 
   void createSyncObject();
-  void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void drawGeometry(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+  std::vector<VkCommandBuffer> _commandBuffers;
+  std::vector<VkSemaphore> _imageAvailableSemaphores;
+  std::vector<VkSemaphore> _renderFinishedSemaphores;
+  std::vector<VkFence> _inFlightFences;
+
+  uint32_t currentFrame = 0;
 };

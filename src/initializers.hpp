@@ -7,6 +7,4 @@ namespace vkinit {
 void transitionImage(VkCommandBuffer commandBuffer, VkImage image,
                      VkImageLayout oldLayout, VkImageLayout newLayout);
 
-VkImageSubresourceRange imagSubresourceRange(VkImageAspectFlags aspectMask);
-
 }; // namespace vkinit
