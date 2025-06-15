@@ -5,6 +5,7 @@
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
 #include <cstdint>
+#include <endian.h>
 #include <immintrin.h>
 #include <stdexcept>
 #include <variant>
@@ -385,48 +386,15 @@ void VulkanEngine::recordCommandBuffer(VkCommandBuffer commandBuffer,
     throw std::runtime_error("failed to begin recording command buffer");
   }
 
-  const VkImageMemoryBarrier image_memory_barrier{
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-      .image = _swapchainImages[imageIndex],
-      .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = 1,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-      }};
-
-  vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0,
-                       nullptr, 0, nullptr, 1, &image_memory_barrier);
+  vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
   draw(commandBuffer, imageIndex);
 
-  const VkImageMemoryBarrier image_memory_barrier2{
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-      .image = _swapchainImages[imageIndex],
-      .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = 1,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-      }};
-
-  vkCmdPipelineBarrier(
-      commandBuffer,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // srcStageMask
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,          // dstStageMask
-      0, 0, nullptr, 0, nullptr,
-      1,                     // imageMemoryBarrierCount
-      &image_memory_barrier2 // pImageMemoryBarriers
-  );
+  vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL);
 
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     throw std::runtime_error("failed to record command buffer");

@@ -26,6 +26,7 @@ add_subdirectory(vk-bootstrap)
 add_executable(MyVulkanApp
   ./src/main.cpp
   ./src/engine.cpp
+  ./src/initializers.cpp
   ${IMGUI_SRC}
 )
 
