@@ -381,4 +381,54 @@ void VulkanEngine::createCommandPool() {
   }
 }
 
-void VulkanEngine::createCommandBuffer() {}
+void VulkanEngine::createCommandBuffer() {
+
+  VkCommandBufferAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  allocInfo.commandPool = _commandPool;
+  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  allocInfo.commandBufferCount = 1;
+
+  if (vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffer) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("failed to allocate command buffers");
+  }
+}
+
+void VulkanEngine::recordCommandBuffer() {
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = 0;
+  beginInfo.pInheritanceInfo = nullptr;
+
+  if (vkBeginCommandBuffer(_commandBuffer, nullptr) != VK_SUCCESS) {
+    throw std::runtime_error("failed to begin recording command buffer");
+  }
+
+  vkCmdBeginRendering(_commandBuffer, nullptr);
+
+  vkCmdBindPipeline(_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    _graphicsPipeline);
+
+  VkViewport viewport{};
+  viewport.x = 0.0f;
+  viewport.y = 0.0f;
+  viewport.width = (float)_swapchainExtent.width;
+  viewport.height = (float)_swapchainExtent.height;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+  vkCmdSetViewport(_commandBuffer, 0, 1, &viewport);
+
+  VkRect2D scissor{};
+  scissor.offset = {0, 0};
+  scissor.extent = _swapchainExtent;
+  vkCmdSetScissor(_commandBuffer, 0, 1, &scissor);
+
+  vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
+
+  vkCmdEndRendering(_commandBuffer);
+
+  if (vkEndCommandBuffer(_commandBuffer) != VK_SUCCESS) {
+    throw std::runtime_error("failed to record command buffer");
+  }
+}

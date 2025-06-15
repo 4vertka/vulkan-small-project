@@ -71,4 +71,5 @@ private:
 
   VkCommandBuffer _commandBuffer;
   void createCommandBuffer();
+  void recordCommandBuffer();
 };
