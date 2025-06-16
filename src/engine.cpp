@@ -6,7 +6,9 @@
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
 #include <cstdint>
+#include <cstring>
 #include <endian.h>
+#include <glm/vector_relational.hpp>
 #include <immintrin.h>
 #include <stdexcept>
 #include <variant>
@@ -27,6 +29,7 @@ void VulkanEngine::initVulkan() {
   createSwapchain();
   createGraphicsPipeline();
   createCommandPool();
+  createVertexBuffer();
   createCommandBuffer();
   createSyncObject();
 }
@@ -52,6 +55,9 @@ void VulkanEngine::cleanup() {
 
   vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+
+  vkDestroyBuffer(_device, _vertexBuffer, nullptr);
+  vkFreeMemory(_device, _vertexBufferMemory, nullptr);
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
@@ -558,7 +564,13 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
   scissor.extent = _swapchainExtent;
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  VkBuffer vertexBuffers[] = {_vertexBuffer};
+  VkDeviceSize offsets[] = {0};
+
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+  vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertexData::vertices.size()),
+            1, 0, 0);
 
   vkCmdEndRendering(commandBuffer);
 }
@@ -584,4 +596,54 @@ void VulkanEngine::cleanupSwapChain() {
   }
 
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+}
+
+void VulkanEngine::createVertexBuffer() {
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size =
+      sizeof(vertexData::vertices[0]) * vertexData::vertices.size();
+  bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  if (vkCreateBuffer(_device, &bufferInfo, nullptr, &_vertexBuffer) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("failed to create buffer");
+  }
+
+  VkMemoryRequirements memRequirements;
+  vkGetBufferMemoryRequirements(_device, _vertexBuffer, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.memoryTypeIndex = findMemoryType(
+      memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+  if (vkAllocateMemory(_device, &allocInfo, nullptr, &_vertexBufferMemory) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("failed to allocate vertex buffer memory");
+  }
+
+  vkBindBufferMemory(_device, _vertexBuffer, _vertexBufferMemory, 0);
+
+  void *data;
+  vkMapMemory(_device, _vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+  memcpy(data, vertexData::vertices.data(), (size_t)bufferInfo.size);
+  vkUnmapMemory(_device, _vertexBufferMemory);
+}
+
+uint32_t VulkanEngine::findMemoryType(uint32_t typeFilter,
+                                      VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties memProperties;
+  vkGetPhysicalDeviceMemoryProperties(_physicalDevice, &memProperties);
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
+                                    properties) == properties) {
+      return i;
+    }
+  }
+  throw std::runtime_error("failed to find suitable memory type");
 }
