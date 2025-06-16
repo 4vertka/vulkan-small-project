@@ -13,6 +13,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "./initializers.hpp"
+#include "./vertexData.hpp"
 
 class VulkanEngine {
 
