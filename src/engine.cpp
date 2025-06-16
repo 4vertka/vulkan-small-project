@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_hidapi.h>
+#include <SDL2/SDL_joystick.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
 #include <algorithm>
@@ -31,6 +32,7 @@ void VulkanEngine::initVulkan() {
   createGraphicsPipeline();
   createCommandPool();
   createVertexBuffer();
+  createIndexBuffer();
   createCommandBuffer();
   createSyncObject();
 }
@@ -56,6 +58,9 @@ void VulkanEngine::cleanup() {
 
   vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+
+  vkDestroyBuffer(_device, _indexBuffer, nullptr);
+  vkFreeMemory(_device, _indexBufferMemory, nullptr);
 
   vkDestroyBuffer(_device, _vertexBuffer, nullptr);
   vkFreeMemory(_device, _vertexBufferMemory, nullptr);
@@ -570,8 +575,11 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
 
   vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertexData::vertices.size()),
-            1, 0, 0);
+  vkCmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+  vkCmdDrawIndexed(commandBuffer,
+                   static_cast<uint32_t>(vertexData::indices.size()), 1, 0, 0,
+                   0);
 
   vkCmdEndRendering(commandBuffer);
 }
@@ -708,4 +716,31 @@ void VulkanEngine::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
   vkQueueWaitIdle(_graphicsQueue);
 
   vkFreeCommandBuffers(_device, _commandPool, 1, &commandBuffer);
+}
+
+void VulkanEngine::createIndexBuffer() {
+  VkDeviceSize bufferSize =
+      sizeof(vertexData::indices[0]) * vertexData::indices.size();
+
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+  createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+               stagingBuffer, stagingBufferMemory);
+
+  void *data;
+  vkMapMemory(_device, stagingBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, vertexData::indices.data(), (size_t)bufferSize);
+  vkUnmapMemory(_device, stagingBufferMemory);
+
+  createBuffer(
+      bufferSize,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _indexBuffer, _indexBufferMemory);
+
+  copyBuffer(stagingBuffer, _indexBuffer, bufferSize);
+
+  vkDestroyBuffer(_device, stagingBuffer, nullptr);
+  vkFreeMemory(_device, stagingBufferMemory, nullptr);
 }
