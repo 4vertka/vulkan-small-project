@@ -88,5 +88,10 @@ private:
   std::vector<VkSemaphore> _renderFinishedSemaphores;
   std::vector<VkFence> _inFlightFences;
 
+  bool _resized = false;
+
   uint32_t currentFrame = 0;
+
+  void recreateSwapChain();
+  void cleanupSwapChain();
 };

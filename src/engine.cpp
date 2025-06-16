@@ -14,7 +14,8 @@
 void VulkanEngine::initWindow() {
   SDL_Init(SDL_INIT_VIDEO);
 
-  SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
+  SDL_WindowFlags windowFlags =
+      (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
   _window = SDL_CreateWindow("vulkan window", SDL_WINDOWPOS_UNDEFINED,
                              SDL_WINDOWPOS_UNDEFINED, _windowExtent.width,
                              _windowExtent.height, windowFlags);
@@ -46,6 +47,11 @@ void VulkanEngine::cleanup() {
 
   vkDeviceWaitIdle(_device);
 
+  cleanupSwapChain();
+
+  vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
+  vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
     vkDestroyFence(_device, _inFlightFences[i], nullptr);
@@ -57,14 +63,11 @@ void VulkanEngine::cleanup() {
 
   vkDestroyCommandPool(_device, _commandPool, nullptr);
 
-  vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
-  vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+  // for (auto imageView : _swapchainImageViews) {
+  //   vkDestroyImageView(_device, imageView, nullptr);
+  // }
 
-  for (auto imageView : _swapchainImageViews) {
-    vkDestroyImageView(_device, imageView, nullptr);
-  }
-
-  vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+  // vkDestroySwapchainKHR(_device, _swapchain, nullptr);
   vkDestroyDevice(_device, nullptr);
 
   DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
@@ -412,12 +415,19 @@ void VulkanEngine::drawFrame() {
   vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE,
                   UINT64_MAX);
 
-  vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
-
   uint32_t imageIndex;
   VkResult result = vkAcquireNextImageKHR(
       _device, _swapchain, UINT64_MAX, _imageAvailableSemaphores[currentFrame],
       VK_NULL_HANDLE, &imageIndex);
+
+  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    recreateSwapChain();
+    return;
+  } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    throw std::runtime_error("failed to acquire swap chain image");
+  }
+
+  vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
   vkResetCommandBuffer(_commandBuffers[currentFrame], 0);
 
@@ -454,7 +464,14 @@ void VulkanEngine::drawFrame() {
   presentInfo.pSwapchains = swapChains;
   presentInfo.pImageIndices = &imageIndex;
 
-  vkQueuePresentKHR(_presentQueue, &presentInfo);
+  result = vkQueuePresentKHR(_presentQueue, &presentInfo);
+  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
+      _resized) {
+    _resized = false;
+    recreateSwapChain();
+  } else if (result != VK_SUCCESS) {
+    throw std::runtime_error("failed to present swap chain image");
+  }
 
   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -539,4 +556,27 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
   vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
   vkCmdEndRendering(commandBuffer);
+}
+
+void VulkanEngine::recreateSwapChain() {
+  int width = 0, height = 0;
+
+  SDL_GetWindowSize(_window, &width, &height);
+  if (width <= 0 || height <= 0) {
+    _resized = true;
+  }
+
+  vkDeviceWaitIdle(_device);
+
+  cleanupSwapChain();
+
+  createSwapchain();
+}
+
+void VulkanEngine::cleanupSwapChain() {
+  for (auto imageView : _swapchainImageViews) {
+    vkDestroyImageView(_device, imageView, nullptr);
+  }
+
+  vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 }
