@@ -43,10 +43,16 @@ void VulkanEngine::mainLoop() {
 }
 
 void VulkanEngine::cleanup() {
+
+  vkDeviceWaitIdle(_device);
+
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
-    vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
     vkDestroyFence(_device, _inFlightFences[i], nullptr);
+  }
+
+  for (size_t i = 0; i < _renderFinishedSemaphores.size(); i++) {
+    vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
   }
 
   vkDestroyCommandPool(_device, _commandPool, nullptr);
@@ -429,7 +435,7 @@ void VulkanEngine::drawFrame() {
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &_commandBuffers[currentFrame];
 
-  VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[currentFrame]};
+  VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[imageIndex]};
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -456,7 +462,7 @@ void VulkanEngine::drawFrame() {
 void VulkanEngine::createSyncObject() {
 
   _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-  _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  _renderFinishedSemaphores.resize(_swapchainImages.size());
   _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semaphoreInfo{};
@@ -469,12 +475,18 @@ void VulkanEngine::createSyncObject() {
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
                           &_imageAvailableSemaphores[i]) != VK_SUCCESS ||
-        vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
-                          &_renderFinishedSemaphores[i]) != VK_SUCCESS ||
+
         vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]) !=
             VK_SUCCESS) {
 
       throw std::runtime_error("failed to create semaphores");
+    }
+  }
+
+  for (size_t i = 0; i < _swapchainImages.size(); i++) {
+    if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr,
+                          &_renderFinishedSemaphores[i]) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create rennder finished semaphore");
     }
   }
 }
