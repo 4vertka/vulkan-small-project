@@ -40,7 +40,8 @@ void VulkanEngine::initVulkan() {
   // createVertexBuffer();
   // createIndexBuffer();
 
-  createMesh(vertexData::vertices, vertexData::indices);
+  createMesh(vertexData::vertices, vertexData::indices,
+             glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)));
 
   createUniformBuffers();
 
@@ -325,10 +326,17 @@ void VulkanEngine::createGraphicsPipeline() {
   colorBlending.blendConstants[2] = 0.0f;
   colorBlending.blendConstants[3] = 0.0f;
 
+  VkPushConstantRange pushConstantRange{};
+  pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  pushConstantRange.offset = 0;
+  pushConstantRange.size = sizeof(glm::mat4);
+
   VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
   pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipelineLayoutInfo.setLayoutCount = 1;
   pipelineLayoutInfo.pSetLayouts = &_descriptorSetLayout;
+  pipelineLayoutInfo.pushConstantRangeCount = 1;
+  pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
   if (vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                              &_pipelineLayout) != VK_SUCCESS) {
@@ -604,6 +612,9 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
   for (const auto &mesh : _meshes) {
 
     updateUniformBuffer(currentFrame);
+    vkCmdPushConstants(commandBuffer, _pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
+                       &mesh.transform);
     VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
     VkDeviceSize offsets[] = {0};
 
@@ -828,8 +839,8 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
                    .count();
 
   UniformBufferObject ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
-                          glm::vec3(0.0f, 0.0f, 1.0f));
+  // ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+  //                         glm::vec3(0.0f, 0.0f, 1.0f));
 
   // ubo.view =
   //     glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
@@ -911,10 +922,12 @@ void VulkanEngine::createDescriptorSet() {
 }
 
 void VulkanEngine::createMesh(const std::vector<vertexData::Vertex> &vertices,
-                              const std::vector<uint16_t> &indices) {
+                              const std::vector<uint16_t> &indices,
+                              const glm::mat4 &inittialTransform) {
 
   Mesh newMesh;
   newMesh.indexCount = static_cast<uint32_t>(indices.size());
+  newMesh.transform = inittialTransform;
 
   VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
   createBuffer(vertexBufferSize,

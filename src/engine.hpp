@@ -21,10 +21,11 @@ struct Mesh {
   VkBuffer indexBuffer;
   VkDeviceMemory indexBufferMemory;
   uint16_t indexCount;
+  glm::mat4 transform;
 };
 
 struct UniformBufferObject {
-  alignas(16) glm::mat4 model;
+  // alignas(16) glm::mat4 model;
   alignas(16) glm::mat4 view;
   alignas(16) glm::mat4 proj;
 };
@@ -144,7 +145,8 @@ private:
 
   std::vector<Mesh> _meshes;
   void createMesh(const std::vector<vertexData::Vertex> &vertices,
-                  const std::vector<uint16_t> &indices);
+                  const std::vector<uint16_t> &indices,
+                  const glm::mat4 &inittialTransform = glm::mat4(1.0f));
 
   void uploadToBuffer(const void *data, VkDeviceSize size, VkBuffer dstBuffer);
 };
