@@ -853,9 +853,8 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
 
   ubo.view = glm::translate(glm::mat4(1.0f), -_camera2d.cameraPosition);
 
-  float zoom = 1.0f;
   float aspect = _swapchainExtent.width / (float)_swapchainExtent.height;
-  float orthoSize = 2.0f / zoom;
+  float orthoSize = 2.0f / _camera2d.cameraZoom;
 
   ubo.proj = glm::ortho(-orthoSize * aspect, orthoSize * aspect, -orthoSize,
                         orthoSize, -1.0f, 1.0f);
