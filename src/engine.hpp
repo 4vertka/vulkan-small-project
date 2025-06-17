@@ -149,4 +149,6 @@ private:
                   const glm::mat4 &inittialTransform = glm::mat4(1.0f));
 
   void uploadToBuffer(const void *data, VkDeviceSize size, VkBuffer dstBuffer);
+
+  void createAllMeshes();
 };

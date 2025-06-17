@@ -40,8 +40,7 @@ void VulkanEngine::initVulkan() {
   // createVertexBuffer();
   // createIndexBuffer();
 
-  createMesh(vertexData::vertices, vertexData::indices,
-             glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)));
+  createAllMeshes();
 
   createUniformBuffers();
 
@@ -968,4 +967,16 @@ void VulkanEngine::uploadToBuffer(const void *data, VkDeviceSize size,
 
   vkDestroyBuffer(_device, stagingBuffer, nullptr);
   vkFreeMemory(_device, stagingBufferMemory, nullptr);
+}
+
+void VulkanEngine::createAllMeshes() {
+
+  createMesh(vertexData::vertices, vertexData::indices,
+             glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)));
+
+  createMesh(vertexData::vertices, vertexData::indices,
+             glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.0f, 0.0f)));
+
+  createMesh(vertexData::vertices, vertexData::indices,
+             glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.0f)));
 }
