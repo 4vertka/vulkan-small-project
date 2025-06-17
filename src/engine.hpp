@@ -15,6 +15,12 @@
 #include "./initializers.hpp"
 #include "./vertexData.hpp"
 
+struct UniformBufferObject {
+  alignas(16) glm::mat4 model;
+  alignas(16) glm::mat4 view;
+  alignas(16) glm::mat4 proj;
+};
+
 class VulkanEngine {
 
 public:
@@ -104,9 +110,25 @@ private:
   VkBuffer _indexBuffer;
   VkDeviceMemory _indexBufferMemory;
 
+  std::vector<VkBuffer> _uniformBuffers;
+  std::vector<VkDeviceMemory> _uniformBufferMemory;
+  std::vector<void *> _uniformBuffersMapped;
+
+  std::vector<VkDescriptorSet> _descriptorSets;
+
   void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                     VkMemoryPropertyFlags properties, VkBuffer &buffer,
                     VkDeviceMemory &bufferMemory);
 
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+  VkDescriptorSetLayout _descriptorSetLayout;
+  VkDescriptorPool _descriptorPool;
+  void createDescriptorSetLayout();
+  void createDescriptorPool();
+  void createDescriptorSet();
+
+  void createUniformBuffers();
+
+  void updateUniformBuffer(uint32_t currentImage);
 };
