@@ -12,6 +12,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
+#include "./camera.hpp"
 #include "./initializers.hpp"
 #include "./vertexData.hpp"
 
@@ -151,4 +152,8 @@ private:
   void uploadToBuffer(const void *data, VkDeviceSize size, VkBuffer dstBuffer);
 
   void createAllMeshes();
+
+  void processInput(SDL_Event event);
+
+  Camera2D _camera2d;
 };

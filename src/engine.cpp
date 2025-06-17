@@ -1,9 +1,11 @@
 #include "engine.hpp"
+#include "camera.hpp"
 #include "vertexData.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_hidapi.h>
 #include <SDL2/SDL_joystick.h>
+#include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
 #include <algorithm>
@@ -14,6 +16,7 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/vector_relational.hpp>
 #include <immintrin.h>
@@ -55,9 +58,10 @@ void VulkanEngine::mainLoop() {
   closeEngine = false;
   while (!closeEngine) {
     while (SDL_PollEvent(&e) != 0) {
-      if (e.type == SDL_QUIT) {
-        closeEngine = true;
-      }
+      // if (e.type == SDL_QUIT) {
+      //   closeEngine = true;
+      processInput(e);
+      //}
     }
     drawFrame();
   }
@@ -845,12 +849,13 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
   //     glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
   //                 glm::vec3(0.0f, 0.0f, 1.0f));
 
-  ubo.view =
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                  glm::vec3(0.0f, 1.0f, 0.0f));
+  // ubo.view = glm::lookAt(_cameraPos, _cameraPos + _cameraFront, _cameraUp);
 
+  ubo.view = glm::translate(glm::mat4(1.0f), -_camera2d.cameraPosition);
+
+  float zoom = 1.0f;
   float aspect = _swapchainExtent.width / (float)_swapchainExtent.height;
-  float orthoSize = 2.0f;
+  float orthoSize = 2.0f / zoom;
 
   ubo.proj = glm::ortho(-orthoSize * aspect, orthoSize * aspect, -orthoSize,
                         orthoSize, -1.0f, 1.0f);
@@ -979,4 +984,14 @@ void VulkanEngine::createAllMeshes() {
 
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.0f)));
+}
+
+void VulkanEngine::processInput(SDL_Event event) {
+
+  switch (event.type) {
+  case SDL_QUIT:
+    closeEngine = true;
+    break;
+  }
+  _camera2d.cameraMovement(event);
 }
