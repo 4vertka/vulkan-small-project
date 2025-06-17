@@ -15,6 +15,14 @@
 #include "./initializers.hpp"
 #include "./vertexData.hpp"
 
+struct Mesh {
+  VkBuffer vertexBuffer;
+  VkDeviceMemory vertexBufferMemory;
+  VkBuffer indexBuffer;
+  VkDeviceMemory indexBufferMemory;
+  uint16_t indexCount;
+};
+
 struct UniformBufferObject {
   alignas(16) glm::mat4 model;
   alignas(16) glm::mat4 view;
@@ -83,12 +91,14 @@ private:
   void createCommandPool();
 
   void createCommandBuffer();
-  void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex,
+                           uint32_t currentFrame);
 
   void drawFrame();
 
   void createSyncObject();
-  void drawGeometry(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void drawGeometry(VkCommandBuffer commandBuffer, uint32_t imageIndex,
+                    uint32_t currentFrame);
 
   std::vector<VkCommandBuffer> _commandBuffers;
   std::vector<VkSemaphore> _imageAvailableSemaphores;
@@ -131,4 +141,10 @@ private:
   void createUniformBuffers();
 
   void updateUniformBuffer(uint32_t currentImage);
+
+  std::vector<Mesh> _meshes;
+  void createMesh(const std::vector<vertexData::Vertex> &vertices,
+                  const std::vector<uint16_t> &indices);
+
+  void uploadToBuffer(const void *data, VkDeviceSize size, VkBuffer dstBuffer);
 };

@@ -37,9 +37,13 @@ void VulkanEngine::initVulkan() {
   createDescriptorSetLayout();
   createGraphicsPipeline();
   createCommandPool();
-  createVertexBuffer();
-  createIndexBuffer();
+  // createVertexBuffer();
+  // createIndexBuffer();
+
+  createMesh(vertexData::vertices, vertexData::indices);
+
   createUniformBuffers();
+
   createDescriptorPool();
   createDescriptorSet();
   createCommandBuffer();
@@ -77,11 +81,13 @@ void VulkanEngine::cleanup() {
   vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
 
-  vkDestroyBuffer(_device, _indexBuffer, nullptr);
-  vkFreeMemory(_device, _indexBufferMemory, nullptr);
+  for (auto const &mesh : _meshes) {
+    vkDestroyBuffer(_device, mesh.indexBuffer, nullptr);
+    vkFreeMemory(_device, mesh.indexBufferMemory, nullptr);
 
-  vkDestroyBuffer(_device, _vertexBuffer, nullptr);
-  vkFreeMemory(_device, _vertexBufferMemory, nullptr);
+    vkDestroyBuffer(_device, mesh.vertexBuffer, nullptr);
+    vkFreeMemory(_device, mesh.vertexBufferMemory, nullptr);
+  }
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
@@ -425,7 +431,8 @@ void VulkanEngine::createCommandBuffer() {
 }
 
 void VulkanEngine::recordCommandBuffer(VkCommandBuffer commandBuffer,
-                                       uint32_t imageIndex) {
+                                       uint32_t imageIndex,
+                                       uint32_t currentFrame) {
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = 0;
@@ -439,7 +446,7 @@ void VulkanEngine::recordCommandBuffer(VkCommandBuffer commandBuffer,
                           VK_IMAGE_LAYOUT_UNDEFINED,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-  drawGeometry(commandBuffer, imageIndex);
+  drawGeometry(commandBuffer, imageIndex, currentFrame);
 
   vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -466,13 +473,13 @@ void VulkanEngine::drawFrame() {
     throw std::runtime_error("failed to acquire swap chain image");
   }
 
-  updateUniformBuffer(currentFrame);
+  // updateUniformBuffer(currentFrame);
 
   vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
   vkResetCommandBuffer(_commandBuffers[currentFrame], 0);
 
-  recordCommandBuffer(_commandBuffers[currentFrame], imageIndex);
+  recordCommandBuffer(_commandBuffers[currentFrame], imageIndex, currentFrame);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -550,7 +557,7 @@ void VulkanEngine::createSyncObject() {
 }
 
 void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
-                                uint32_t imageIndex) {
+                                uint32_t imageIndex, uint32_t currentFrame) {
   VkImageView currentImageView = _swapchainImageViews[imageIndex];
 
   VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
@@ -562,7 +569,7 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
   colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  colorAttachmentInfo.clearValue.color = {0.0f, 0.0f, 0.0f, 1.0f};
+  colorAttachmentInfo.clearValue.color = {0.0f, 0.0f, 1.0f, 1.0f};
 
   VkRenderingInfoKHR renderingInfo{};
   renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
@@ -594,19 +601,22 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
   scissor.extent = _swapchainExtent;
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  VkBuffer vertexBuffers[] = {_vertexBuffer};
-  VkDeviceSize offsets[] = {0};
+  for (const auto &mesh : _meshes) {
 
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    updateUniformBuffer(currentFrame);
+    VkBuffer vertexBuffers[] = {mesh.vertexBuffer};
+    VkDeviceSize offsets[] = {0};
 
-  vkCmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          _pipelineLayout, 0, 1, &_descriptorSets[currentFrame],
-                          0, nullptr);
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-  vkCmdDrawIndexed(commandBuffer,
-                   static_cast<uint32_t>(vertexData::indices.size()), 1, 0, 0,
-                   0);
+    vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0,
+                         VK_INDEX_TYPE_UINT16);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _pipelineLayout, 0, 1,
+                            &_descriptorSets[currentFrame], 0, nullptr);
+
+    vkCmdDrawIndexed(commandBuffer, mesh.indexCount, 1, 0, 0, 0);
+  }
 
   vkCmdEndRendering(commandBuffer);
 }
@@ -818,7 +828,7 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
                    .count();
 
   UniformBufferObject ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+  ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
                           glm::vec3(0.0f, 0.0f, 1.0f));
 
   // ubo.view =
@@ -898,4 +908,51 @@ void VulkanEngine::createDescriptorSet() {
 
     vkUpdateDescriptorSets(_device, 1, &descriptorWrite, 0, nullptr);
   }
+}
+
+void VulkanEngine::createMesh(const std::vector<vertexData::Vertex> &vertices,
+                              const std::vector<uint16_t> &indices) {
+
+  Mesh newMesh;
+  newMesh.indexCount = static_cast<uint32_t>(indices.size());
+
+  VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+  createBuffer(vertexBufferSize,
+               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh.vertexBuffer,
+               newMesh.vertexBufferMemory);
+
+  VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+  createBuffer(indexBufferSize,
+               VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                   VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh.indexBuffer,
+               newMesh.indexBufferMemory);
+
+  uploadToBuffer(vertices.data(), vertexBufferSize, newMesh.vertexBuffer);
+  uploadToBuffer(indices.data(), indexBufferSize, newMesh.indexBuffer);
+
+  _meshes.push_back(newMesh);
+}
+
+void VulkanEngine::uploadToBuffer(const void *data, VkDeviceSize size,
+                                  VkBuffer dstBuffer) {
+  VkBuffer stagingBuffer;
+  VkDeviceMemory stagingBufferMemory;
+
+  createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+               stagingBuffer, stagingBufferMemory);
+
+  void *mappedData;
+  vkMapMemory(_device, stagingBufferMemory, 0, size, 0, &mappedData);
+  memcpy(mappedData, data, (size_t)size);
+  vkUnmapMemory(_device, stagingBufferMemory);
+
+  copyBuffer(stagingBuffer, dstBuffer, size);
+
+  vkDestroyBuffer(_device, stagingBuffer, nullptr);
+  vkFreeMemory(_device, stagingBufferMemory, nullptr);
 }
