@@ -19,7 +19,7 @@ void Camera2D::cameraMovement(SDL_Event event) {
     }
   }
 
-  switch (event.type) {
+  /*switch (event.type) {
   case SDL_KEYDOWN:
     switch (event.key.keysym.sym) {
     case SDLK_w:
@@ -41,7 +41,7 @@ void Camera2D::cameraMovement(SDL_Event event) {
       moveZoom(zoomOut);
       break;
     }
-  }
+  }*/
 }
 
 void Camera2D::moveCamera(CameraMovement movementDirection) {

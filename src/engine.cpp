@@ -59,7 +59,16 @@ void VulkanEngine::mainLoop() {
 
   SDL_Event e;
   closeEngine = false;
+  auto lastTime = std::chrono::high_resolution_clock::now();
+
   while (!closeEngine) {
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float deltaTime =
+        std::chrono::duration<float>(currentTime - lastTime).count();
+    lastTime = currentTime;
+
+    updateMeshes(deltaTime);
+
     while (SDL_PollEvent(&e) != 0) {
       processInput(e);
 
@@ -70,8 +79,23 @@ void VulkanEngine::mainLoop() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
 
+    ImGui::Begin("Example bug");
+    // ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::GetWindowHeight());
+    if (ImGui::Button("Camera Mode")) {
+      _camereMode = true;
+      _playerMode = false;
+    }
+    if (ImGui::Button("Player Mode")) {
+      _camereMode = false;
+      _playerMode = true;
+    }
+    if (ImGui::Button("Quit")) {
+      closeEngine = true;
+    }
+
+    ImGui::End();
     ImGui::Render();
 
     drawFrame();
@@ -1043,7 +1067,33 @@ void VulkanEngine::processInput(SDL_Event event) {
     closeEngine = true;
     break;
   }
-  _camera2d.cameraMovement(event);
+  if (_camereMode) {
+    _camera2d.cameraMovement(event);
+  }
+  if (_playerMode) {
+    /*if (!_meshes.empty()) {
+      auto &playerMesh = _meshes[0];
+      switch (event.key.keysym.sym) {
+      case SDLK_w:
+        playerMesh.velocity.y = moveSpeed;
+        break;
+      case SDLK_s:
+        playerMesh.velocity.y = -moveSpeed;
+        break;
+      case SDLK_a:
+        playerMesh.velocity.x = -moveSpeed;
+        break;
+      case SDLK_d:
+        playerMesh.velocity.x = moveSpeed;
+        break;
+      }
+    }*/
+    if (!_meshes.empty()) {
+      auto &playerMesh = _meshes[0];
+      _player2d.addMesh(playerMesh);
+      _player2d.playerMovement(event);
+    }
+  }
 }
 
 void VulkanEngine::initImGUI() {
@@ -1075,4 +1125,10 @@ void VulkanEngine::initImGUI() {
   initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
   ImGui_ImplVulkan_Init(&initInfo);
+}
+
+void VulkanEngine::updateMeshes(float deltaTime) {
+  for (auto &mesh : _meshes) {
+    mesh.update(deltaTime);
+  }
 }

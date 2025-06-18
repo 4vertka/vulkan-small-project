@@ -5,6 +5,8 @@
 #include <SDL2/SDL_vulkan.h>
 #include <cstdlib>
 #include <fstream>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -16,17 +18,10 @@
 #include "../imgui/backends/imgui_impl_vulkan.h"
 #include "../imgui/imgui.h"
 #include "./camera.hpp"
+#include "./initMeshes.hpp"
 #include "./initializers.hpp"
 #include "./vertexData.hpp"
-
-struct Mesh {
-  VkBuffer vertexBuffer;
-  VkDeviceMemory vertexBufferMemory;
-  VkBuffer indexBuffer;
-  VkDeviceMemory indexBufferMemory;
-  uint16_t indexCount;
-  glm::mat4 transform;
-};
+#include "enteties.hpp"
 
 struct UniformBufferObject {
   // alignas(16) glm::mat4 model;
@@ -159,7 +154,12 @@ private:
   void processInput(SDL_Event event);
 
   Camera2D _camera2d;
+  Player _player2d;
 
   void initImGUI();
   float _mainScale;
+
+  bool _camereMode{false};
+  bool _playerMode{false};
+  void updateMeshes(float deltaTime);
 };
