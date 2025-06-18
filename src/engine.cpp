@@ -874,8 +874,17 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
   float aspect = _swapchainExtent.width / (float)_swapchainExtent.height;
   float orthoSize = 2.0f / _camera2d.cameraZoom;
 
-  ubo.proj = glm::ortho(-orthoSize * aspect, orthoSize * aspect, -orthoSize,
-                        orthoSize, -1.0f, 1.0f);
+  float worldWidth = 10.0f;
+  float worldHeight = worldWidth / aspect;
+
+  worldWidth /= _camera2d.cameraZoom;
+  worldHeight /= _camera2d.cameraZoom;
+
+  ubo.proj = glm::ortho(-worldWidth / 2, worldWidth / 2, -worldHeight / 2,
+                        worldHeight / 2, -1.0f, 1.0f);
+
+  // ubo.proj = glm::ortho(-orthoSize * aspect, orthoSize * aspect, -orthoSize,
+  //                       orthoSize, -1.0f, 1.0f);
 
   // ubo.proj = glm::perspective(
   //     glm::radians(45.0f),
@@ -1009,14 +1018,22 @@ void VulkanEngine::uploadToBuffer(const void *data, VkDeviceSize size,
 
 void VulkanEngine::createAllMeshes() {
 
-  createMesh(vertexData::vertices, vertexData::indices,
+  /*createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)));
 
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.0f, 0.0f)));
 
   createMesh(vertexData::vertices, vertexData::indices,
-             glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.0f)));
+             glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.0f)));*/
+
+  createMesh(vertexData::vertices, vertexData::indices,
+             glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 1.0f, 0.0f)) *
+                 glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)));
+
+  createMesh(vertexData::vertices, vertexData::indices,
+             glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, 0.0f)) *
+                 glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)));
 }
 
 void VulkanEngine::processInput(SDL_Event event) {
