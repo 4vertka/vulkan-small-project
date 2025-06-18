@@ -12,6 +12,9 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
+#include "../imgui/backends/imgui_impl_sdl2.h"
+#include "../imgui/backends/imgui_impl_vulkan.h"
+#include "../imgui/imgui.h"
 #include "./camera.hpp"
 #include "./initializers.hpp"
 #include "./vertexData.hpp"
@@ -156,4 +159,7 @@ private:
   void processInput(SDL_Event event);
 
   Camera2D _camera2d;
+
+  void initImGUI();
+  float _mainScale;
 };

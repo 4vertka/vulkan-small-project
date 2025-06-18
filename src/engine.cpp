@@ -54,15 +54,26 @@ void VulkanEngine::initVulkan() {
 }
 
 void VulkanEngine::mainLoop() {
+
+  initImGUI();
+
   SDL_Event e;
   closeEngine = false;
   while (!closeEngine) {
     while (SDL_PollEvent(&e) != 0) {
-      // if (e.type == SDL_QUIT) {
-      //   closeEngine = true;
       processInput(e);
-      //}
+
+      ImGui_ImplSDL2_ProcessEvent(&e);
     }
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::ShowDemoWindow();
+
+    ImGui::Render();
+
     drawFrame();
   }
 }
@@ -77,6 +88,10 @@ void VulkanEngine::cleanup() {
     vkDestroyBuffer(_device, _uniformBuffers[i], nullptr);
     vkFreeMemory(_device, _uniformBufferMemory[i], nullptr);
   }
+
+  ImGui_ImplVulkan_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  ImGui::DestroyContext();
 
   vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
 
@@ -208,6 +223,7 @@ void VulkanEngine::createSwapchain() {
   _swapchain = swapchain_return.swapchain;
   _swapchainImages = swapchain_return.get_images().value();
   _swapchainImageViews = swapchain_return.get_image_views().value();
+  _swapchainImageFormat = swapchain_return.image_format;
 
   std::cout << "swapchain created\n";
 }
@@ -632,6 +648,8 @@ void VulkanEngine::drawGeometry(VkCommandBuffer commandBuffer,
     vkCmdDrawIndexed(commandBuffer, mesh.indexCount, 1, 0, 0, 0);
   }
 
+  ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
   vkCmdEndRendering(commandBuffer);
 }
 
@@ -869,15 +887,31 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
 }
 
 void VulkanEngine::createDescriptorPool() {
-  VkDescriptorPoolSize poolSize{};
-  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  std::vector<VkDescriptorPoolSize> poolSizes{};
+
+  poolSizes.push_back(
+      {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+       .descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT)});
+
+  poolSizes.push_back({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                       .descriptorCount = 1000});
+
+  poolSizes.push_back(
+      {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = 1000});
+
+  poolSizes.push_back(
+      {.type = VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = 1000});
+
+  // VkDescriptorPoolSize poolSize{};
+  // poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  // poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  poolInfo.poolSizeCount = 1;
-  poolInfo.pPoolSizes = &poolSize;
-  poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.pPoolSizes = poolSizes.data();
+  poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) + 1000;
 
   if (vkCreateDescriptorPool(_device, &poolInfo, nullptr, &_descriptorPool) !=
       VK_SUCCESS) {
@@ -993,4 +1027,35 @@ void VulkanEngine::processInput(SDL_Event event) {
     break;
   }
   _camera2d.cameraMovement(event);
+}
+
+void VulkanEngine::initImGUI() {
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  (void)io;
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+  ImGui::StyleColorsDark();
+
+  ImGui_ImplSDL2_InitForVulkan(_window);
+  ImGui_ImplVulkan_InitInfo initInfo{};
+  initInfo.Instance = _instance;
+  initInfo.PhysicalDevice = _physicalDevice;
+  initInfo.Device = _device;
+  initInfo.Queue = _graphicsQueue;
+  initInfo.QueueFamily = _graphicsQueueFamily;
+  initInfo.DescriptorPool = _descriptorPool;
+  initInfo.Subpass = 0;
+  initInfo.MinImageCount = 3;
+  initInfo.ImageCount = 3;
+  initInfo.UseDynamicRendering = true;
+
+  initInfo.PipelineRenderingCreateInfo = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+  initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+  initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats =
+      &_swapchainImageFormat;
+  initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+  ImGui_ImplVulkan_Init(&initInfo);
 }
