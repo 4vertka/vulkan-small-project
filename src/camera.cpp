@@ -17,31 +17,12 @@ void Camera2D::cameraMovement(SDL_Event event) {
                keyboardStateArray[SDL_SCANCODE_A]) {
       moveCamera(moveLeft);
     }
-  }
-
-  /*switch (event.type) {
-  case SDL_KEYDOWN:
-    switch (event.key.keysym.sym) {
-    case SDLK_w:
-      moveCamera(moveUp);
-      break;
-    case SDLK_s:
-      moveCamera(moveDown);
-      break;
-    case SDLK_a:
-      moveCamera(moveLeft);
-      break;
-    case SDLK_d:
-      moveCamera(moveRight);
-      break;
-    case SDLK_q:
+    if (keyboardStateArray[SDL_SCANCODE_Q]) {
       moveZoom(zoomIn);
-      break;
-    case SDLK_e:
+    } else if (keyboardStateArray[SDL_SCANCODE_E]) {
       moveZoom(zoomOut);
-      break;
     }
-  }*/
+  }
 }
 
 void Camera2D::moveCamera(CameraMovement movementDirection) {

@@ -1,5 +1,7 @@
 #include "./enteties.hpp"
 #include <SDL2/SDL_events.h>
+#include <SDL2/SDL_scancode.h>
+#include <algorithm>
 
 void Player::playerMovement(SDL_Event event) {
 
