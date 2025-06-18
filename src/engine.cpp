@@ -993,11 +993,14 @@ void VulkanEngine::createDescriptorSet() {
 
 void VulkanEngine::createMesh(const std::vector<vertexData::Vertex> &vertices,
                               const std::vector<uint16_t> &indices,
-                              const glm::mat4 &inittialTransform) {
+                              const glm::mat4 &inittialTransform,
+                              glm::vec3 position) {
 
   Mesh newMesh;
   newMesh.indexCount = static_cast<uint32_t>(indices.size());
   newMesh.transform = inittialTransform;
+
+  newMesh.position = position;
 
   VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
   createBuffer(vertexBufferSize,
@@ -1053,11 +1056,13 @@ void VulkanEngine::createAllMeshes() {
 
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 1.0f, 0.0f)) *
-                 glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)));
+                 glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)),
+             glm::vec3(-2.0f, 1.0f, 0.0f));
 
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, 0.0f)) *
-                 glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)));
+                 glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)),
+             glm::vec3(3.0f, -1.0f, 0.0f));
 }
 
 void VulkanEngine::processInput(SDL_Event event) {
