@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include "camera.hpp"
+#include "initializers.hpp"
 #include "vertexData.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
@@ -795,13 +796,15 @@ void VulkanEngine::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 void VulkanEngine::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
                               VkDeviceSize size) {
 
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+  VkCommandBuffer commandBuffer =
+      vkinit::beginSingleTimeCommands(_commandPool, _device);
 
   VkBufferCopy copyRegion{};
   copyRegion.size = size;
   vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-  endSingleTimeCommands(commandBuffer);
+  vkinit::endSingleTimeCommands(commandBuffer, _graphicsQueue, _device,
+                                _commandPool);
 }
 
 void VulkanEngine::createIndexBuffer() {
@@ -1150,17 +1153,19 @@ void VulkanEngine::createTextureImage() {
       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, textureImageMemory);
 
-  transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  vkinit::transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB,
+                                VK_IMAGE_LAYOUT_UNDEFINED,
+                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                _commandPool, _device, _graphicsQueue);
 
   copyBufferToImage(staginBuffer, _textureImage,
                     static_cast<uint32_t>(texWidth),
                     static_cast<uint32_t>(texHeight));
 
-  transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  vkinit::transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB,
+                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                _commandPool, _device, _graphicsQueue);
 
   vkDestroyBuffer(_device, staginBuffer, nullptr);
   vkFreeMemory(_device, stagingBufferMemory, nullptr);
@@ -1210,43 +1215,11 @@ void VulkanEngine::createImage(uint32_t width, uint32_t height, VkFormat format,
   vkBindImageMemory(_device, _textureImage, textureImageMemory, 0);
 }
 
-VkCommandBuffer VulkanEngine::beginSingleTimeCommands() {
-  VkCommandBufferAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = _commandPool;
-  allocInfo.commandBufferCount = 1;
-
-  VkCommandBuffer commandBuffer;
-  vkAllocateCommandBuffers(_device, &allocInfo, &commandBuffer);
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-  return commandBuffer;
-}
-
-void VulkanEngine::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-  vkEndCommandBuffer(commandBuffer);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-
-  vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(_graphicsQueue);
-
-  vkFreeCommandBuffers(_device, _commandPool, 1, &commandBuffer);
-}
-
-void VulkanEngine::transitionImageLayout(VkImage image, VkFormat format,
+/*void VulkanEngine::transitionImageLayout(VkImage image, VkFormat format,
                                          VkImageLayout oldLayout,
                                          VkImageLayout newLayout) {
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+  VkCommandBuffer commandBuffer =
+      vkinit::beginSingleTimeCommands(_commandPool, _device);
 
   VkImageMemoryBarrier barrier{};
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1260,9 +1233,6 @@ void VulkanEngine::transitionImageLayout(VkImage image, VkFormat format,
   barrier.subresourceRange.levelCount = 1;
   barrier.subresourceRange.baseArrayLayer = 0;
   barrier.subresourceRange.layerCount = 1;
-
-  // barrier.srcAccessMask = 0;
-  // barrier.dstAccessMask = 0;
 
   VkPipelineStageFlags sourceStage;
   VkPipelineStageFlags destinationStage;
@@ -1288,13 +1258,15 @@ void VulkanEngine::transitionImageLayout(VkImage image, VkFormat format,
   vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0,
                        nullptr, 0, nullptr, 1, &barrier);
 
-  endSingleTimeCommands(commandBuffer);
-}
+  vkinit::endSingleTimeCommands(commandBuffer, _graphicsQueue, _device,
+                                _commandPool);
+}*/
 
 void VulkanEngine::copyBufferToImage(VkBuffer buffer, VkImage image,
                                      uint32_t width, uint32_t height) {
 
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+  VkCommandBuffer commandBuffer =
+      vkinit::beginSingleTimeCommands(_commandPool, _device);
 
   VkBufferImageCopy region{};
   region.bufferOffset = 0;
@@ -1312,7 +1284,8 @@ void VulkanEngine::copyBufferToImage(VkBuffer buffer, VkImage image,
   vkCmdCopyBufferToImage(commandBuffer, buffer, image,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-  endSingleTimeCommands(commandBuffer);
+  vkinit::endSingleTimeCommands(commandBuffer, _graphicsQueue, _device,
+                                _commandPool);
 }
 
 void VulkanEngine::createTextureImageView() {
