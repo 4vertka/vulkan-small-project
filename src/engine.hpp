@@ -3,6 +3,7 @@
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -163,4 +164,26 @@ private:
   bool _camereMode{false};
   bool _playerMode{false};
   void updateMeshes(float deltaTime);
+
+  void createTextureImage();
+  void createImage(uint32_t width, uint32_t height, VkFormat format,
+                   VkImageTiling tiling, VkImageUsageFlags usage,
+                   VkMemoryPropertyFlags properties, VkImage &image,
+                   VkDeviceMemory imageMemory);
+
+  VkImage _textureImage;
+  VkImageView _textureImageView;
+  VkSampler _textureSampler;
+  VkDeviceMemory textureImageMemory;
+  VkCommandBuffer beginSingleTimeCommands();
+  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+  void transitionImageLayout(VkImage image, VkFormat format,
+                             VkImageLayout oldLayout, VkImageLayout newLayout);
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
+                         uint32_t height);
+  void createTextureImageView();
+  VkImageView createImageView(VkImage image, VkFormat format);
+
+  void createImageViews();
+  void createTextureSampler();
 };
