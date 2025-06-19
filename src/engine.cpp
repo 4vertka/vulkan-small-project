@@ -113,11 +113,11 @@ void VulkanEngine::cleanup() {
 
   vkDeviceWaitIdle(_device);
 
+  cleanupSwapChain();
+
   ImGui_ImplVulkan_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
-
-  cleanupSwapChain();
 
   vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
@@ -794,38 +794,6 @@ void VulkanEngine::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 
 void VulkanEngine::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
                               VkDeviceSize size) {
-  /*VkCommandBufferAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = _commandPool;
-  allocInfo.commandBufferCount = 1;
-
-  VkCommandBuffer commandBuffer;
-  vkAllocateCommandBuffers(_device, &allocInfo, &commandBuffer);
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-  VkBufferCopy copyRegion{};
-  copyRegion.srcOffset = 0;
-  copyRegion.dstOffset = 0;
-  copyRegion.size = size;
-  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-  vkEndCommandBuffer(commandBuffer);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-
-  vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(_graphicsQueue);
-
-  vkFreeCommandBuffers(_device, _commandPool, 1, &commandBuffer);*/
 
   VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -956,24 +924,6 @@ void VulkanEngine::updateUniformBuffer(uint32_t currentImage) {
 }
 
 void VulkanEngine::createDescriptorPool() {
-  // std::vector<VkDescriptorPoolSize> poolSizes{};
-
-  // poolSizes.push_back(
-  //     {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-  //      .descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT)});
-
-  // poolSizes.push_back({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-  //                      .descriptorCount = 1000});
-
-  // poolSizes.push_back(
-  //     {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = 1000});
-
-  // poolSizes.push_back(
-  //     {.type = VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = 1000});
-
-  // VkDescriptorPoolSize poolSize{};
-  // poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  // poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
   std::array<VkDescriptorPoolSize, 2> poolSizes{};
   poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1022,17 +972,6 @@ void VulkanEngine::createDescriptorSet() {
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = _textureImageView;
     imageInfo.sampler = _textureSampler;
-
-    /*VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = _descriptorSets[i];
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-    descriptorWrite.pImageInfo = nullptr;
-    descriptorWrite.pTexelBufferView = nullptr;*/
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
@@ -1113,15 +1052,6 @@ void VulkanEngine::uploadToBuffer(const void *data, VkDeviceSize size,
 
 void VulkanEngine::createAllMeshes() {
 
-  /*createMesh(vertexData::vertices, vertexData::indices,
-             glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)));
-
-  createMesh(vertexData::vertices, vertexData::indices,
-             glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.0f, 0.0f)));
-
-  createMesh(vertexData::vertices, vertexData::indices,
-             glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.0f)));*/
-
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 1.0f, 0.0f)) *
                  glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)),
@@ -1144,23 +1074,6 @@ void VulkanEngine::processInput(SDL_Event event) {
     _camera2d.cameraMovement(event);
   }
   if (_playerMode) {
-    /*if (!_meshes.empty()) {
-      auto &playerMesh = _meshes[0];
-      switch (event.key.keysym.sym) {
-      case SDLK_w:
-        playerMesh.velocity.y = moveSpeed;
-        break;
-      case SDLK_s:
-        playerMesh.velocity.y = -moveSpeed;
-        break;
-      case SDLK_a:
-        playerMesh.velocity.x = -moveSpeed;
-        break;
-      case SDLK_d:
-        playerMesh.velocity.x = moveSpeed;
-        break;
-      }
-    }*/
     if (!_meshes.empty()) {
       auto &playerMesh = _meshes[0];
       _player2d.addMesh(playerMesh);
