@@ -511,15 +511,27 @@ void VulkanEngine::recordCommandBuffer(VkCommandBuffer commandBuffer,
     throw std::runtime_error("failed to begin recording command buffer");
   }
 
-  vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
-                          VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  // vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
+  //                         VK_IMAGE_LAYOUT_UNDEFINED,
+  //                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  // vkinit::transitionImageLayout(_swapchainImages[imageIndex], , VkImageLayout
+  // oldLayout, VkImageLayout newLayout, VkCommandPool commandPool, VkDevice
+  // device, VkQueue graphicsQueue)
+
+  vkinit::transitionImageLayout(_swapchainImages[imageIndex],
+                                VK_IMAGE_LAYOUT_UNDEFINED,
+                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                _commandPool, _device, _graphicsQueue);
 
   drawGeometry(commandBuffer, imageIndex, currentFrame);
 
-  vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
-                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  vkinit::transitionImageLayout(
+      _swapchainImages[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, _commandPool, _device, _graphicsQueue);
+
+  // vkinit::transitionImage(commandBuffer, _swapchainImages[imageIndex],
+  //                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  //                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     throw std::runtime_error("failed to record command buffer");
@@ -1153,8 +1165,7 @@ void VulkanEngine::createTextureImage() {
       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, textureImageMemory);
 
-  vkinit::transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                                VK_IMAGE_LAYOUT_UNDEFINED,
+  vkinit::transitionImageLayout(_textureImage, VK_IMAGE_LAYOUT_UNDEFINED,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 _commandPool, _device, _graphicsQueue);
 
@@ -1162,7 +1173,7 @@ void VulkanEngine::createTextureImage() {
                     static_cast<uint32_t>(texWidth),
                     static_cast<uint32_t>(texHeight));
 
-  vkinit::transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB,
+  vkinit::transitionImageLayout(_textureImage,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 _commandPool, _device, _graphicsQueue);

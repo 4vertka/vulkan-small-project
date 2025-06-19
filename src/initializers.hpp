@@ -15,9 +15,8 @@ void endSingleTimeCommands(VkCommandBuffer &commandBuffer,
                            VkQueue graphicsQueue, VkDevice device,
                            VkCommandPool commandPool);
 
-void transitionImageLayout(VkImage image, VkFormat format,
-                           VkImageLayout oldLayout, VkImageLayout newLayout,
-                           VkCommandPool commandPool, VkDevice device,
-                           VkQueue graphicsQueue);
+void transitionImageLayout(VkImage image, VkImageLayout oldLayout,
+                           VkImageLayout newLayout, VkCommandPool commandPool,
+                           VkDevice device, VkQueue graphicsQueue);
 
 }; // namespace vkinit
