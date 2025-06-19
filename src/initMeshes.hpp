@@ -11,6 +11,13 @@ struct Mesh {
   VkDeviceMemory indexBufferMemory;
   uint16_t indexCount;
 
+  VkDescriptorSet descriptorSet;
+
+  VkImage textureImage;
+  VkImageView textureImageView;
+  VkSampler textureSampler;
+  VkDeviceMemory textureImageMemory;
+
   glm::mat4 transform;
   glm::vec3 position = glm::vec3(0.0f);
   glm::vec3 velocity = glm::vec3(0.0f);

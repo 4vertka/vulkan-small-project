@@ -147,7 +147,8 @@ private:
   void createMesh(const std::vector<vertexData::Vertex> &vertices,
                   const std::vector<uint16_t> &indices,
                   const glm::mat4 &inittialTransform = glm::mat4(1.0f),
-                  glm::vec3 position = glm::vec3(0.0f));
+                  glm::vec3 position = glm::vec3(0.0f),
+                  const char *texturePath = "../textures/forest-2.png");
 
   void uploadToBuffer(const void *data, VkDeviceSize size, VkBuffer dstBuffer);
 
@@ -165,27 +166,28 @@ private:
   bool _playerMode{false};
   void updateMeshes(float deltaTime);
 
-  void createTextureImage();
+  void createTextureImage(const char *filePath, VkImage &textureImage,
+                          VkDeviceMemory &textureImageMemory);
   void createImage(uint32_t width, uint32_t height, VkFormat format,
                    VkImageTiling tiling, VkImageUsageFlags usage,
                    VkMemoryPropertyFlags properties, VkImage &image,
-                   VkDeviceMemory imageMemory);
+                   VkDeviceMemory &imageMemory);
 
-  VkImage _textureImage;
-  VkImageView _textureImageView;
-  VkSampler _textureSampler;
-  VkDeviceMemory textureImageMemory;
-  // VkCommandBuffer beginSingleTimeCommands();
-  // void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-  // void transitionImageLayout(VkImage image, VkFormat format,
-  //
-  //                           VkImageLayout oldLayout, VkImageLayout
-  //                           newLayout);
+  // VkImage _textureImage;
+  // VkImageView _textureImageView;
+  // VkSampler _textureSampler;
+  // VkDeviceMemory textureImageMemory;
+
   void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
                          uint32_t height);
-  void createTextureImageView();
+
+  void createTextureImageView(VkImage &textureImage,
+                              VkImageView &textureImageView);
+
   VkImageView createImageView(VkImage image, VkFormat format);
 
   void createImageViews();
-  void createTextureSampler();
+  void createTextureSampler(VkSampler &textureSampler);
+
+  void createMeshDescriptorSet(Mesh &mesh);
 };
