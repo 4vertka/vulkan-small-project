@@ -30,7 +30,6 @@ add_executable(MyVulkanApp
   ./src/vertexData.cpp
   ./src/camera.cpp
   ./src/enteties.cpp
-  ./src/initMeshes.cpp
   ${IMGUI_SRC}
 )
 

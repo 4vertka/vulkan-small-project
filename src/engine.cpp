@@ -88,10 +88,7 @@ void VulkanEngine::mainLoop() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    // ImGui::ShowDemoWindow();
-
     ImGui::Begin("Example bug");
-    // ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::GetWindowHeight());
     if (ImGui::Button("Camera Mode")) {
       _camereMode = true;
       _playerMode = false;
@@ -112,67 +109,97 @@ void VulkanEngine::mainLoop() {
 }
 
 void VulkanEngine::cleanup() {
-
   vkDeviceWaitIdle(_device);
-
-  cleanupSwapChain();
 
   ImGui_ImplVulkan_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 
-  vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
-  vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+  cleanupSwapChain();
 
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vkDestroyBuffer(_device, _uniformBuffers[i], nullptr);
-    vkFreeMemory(_device, _uniformBufferMemory[i], nullptr);
+  for (auto &mesh : _meshes) {
+    mesh.cleanup(_device);
   }
+  _meshes.clear();
 
-  vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
-
-  for (auto const &mesh : _meshes) {
-    vkDestroySampler(_device, mesh.textureSampler, nullptr);
-    vkDestroyImageView(_device, mesh.textureImageView, nullptr);
-
-    vkDestroyImage(_device, mesh.textureImage, nullptr);
-    vkFreeMemory(_device, mesh.textureImageMemory, nullptr);
+  if (_graphicsPipeline != VK_NULL_HANDLE) {
+    vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
+    _graphicsPipeline = VK_NULL_HANDLE;
   }
-
-  vkDestroyDescriptorSetLayout(_device, _descriptorSetLayout, nullptr);
-
-  for (auto const &mesh : _meshes) {
-    vkDestroyBuffer(_device, mesh.indexBuffer, nullptr);
-    vkFreeMemory(_device, mesh.indexBufferMemory, nullptr);
-
-    vkDestroyBuffer(_device, mesh.vertexBuffer, nullptr);
-    vkFreeMemory(_device, mesh.vertexBufferMemory, nullptr);
+  if (_pipelineLayout != VK_NULL_HANDLE) {
+    vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+    _pipelineLayout = VK_NULL_HANDLE;
   }
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
-    vkDestroyFence(_device, _inFlightFences[i], nullptr);
+    if (_uniformBuffers[i] != VK_NULL_HANDLE) {
+      vkDestroyBuffer(_device, _uniformBuffers[i], nullptr);
+      _uniformBuffers[i] = VK_NULL_HANDLE;
+    }
+    if (_uniformBufferMemory[i] != VK_NULL_HANDLE) {
+      vkFreeMemory(_device, _uniformBufferMemory[i], nullptr);
+      _uniformBufferMemory[i] = VK_NULL_HANDLE;
+    }
   }
 
-  for (size_t i = 0; i < _renderFinishedSemaphores.size(); i++) {
-    vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
+  if (_descriptorPool != VK_NULL_HANDLE) {
+    vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
+    _descriptorPool = VK_NULL_HANDLE;
+  }
+  if (_descriptorSetLayout != VK_NULL_HANDLE) {
+    vkDestroyDescriptorSetLayout(_device, _descriptorSetLayout, nullptr);
+    _descriptorSetLayout = VK_NULL_HANDLE;
   }
 
-  vkDestroyCommandPool(_device, _commandPool, nullptr);
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    if (_imageAvailableSemaphores[i] != VK_NULL_HANDLE) {
+      vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
+      _imageAvailableSemaphores[i] = VK_NULL_HANDLE;
+    }
+    if (_inFlightFences[i] != VK_NULL_HANDLE) {
+      vkDestroyFence(_device, _inFlightFences[i], nullptr);
+      _inFlightFences[i] = VK_NULL_HANDLE;
+    }
+  }
 
-  // for (auto imageView : _swapchainImageViews) {
-  //   vkDestroyImageView(_device, imageView, nullptr);
-  // }
+  for (auto &semaphore : _renderFinishedSemaphores) {
+    if (semaphore != VK_NULL_HANDLE) {
+      vkDestroySemaphore(_device, semaphore, nullptr);
+      semaphore = VK_NULL_HANDLE;
+    }
+  }
 
-  // vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-  vkDestroyDevice(_device, nullptr);
+  if (_commandPool != VK_NULL_HANDLE) {
+    vkDestroyCommandPool(_device, _commandPool, nullptr);
+    _commandPool = VK_NULL_HANDLE;
+  }
 
-  DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+  if (_device != VK_NULL_HANDLE) {
+    vkDestroyDevice(_device, nullptr);
+    _device = VK_NULL_HANDLE;
+  }
 
-  vkDestroySurfaceKHR(_instance, _surface, nullptr);
-  vkDestroyInstance(_instance, nullptr);
+  if (_debugMessenger != VK_NULL_HANDLE) {
+    DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+    _debugMessenger = VK_NULL_HANDLE;
+  }
 
-  SDL_DestroyWindow(_window);
+  if (_surface != VK_NULL_HANDLE) {
+    vkDestroySurfaceKHR(_instance, _surface, nullptr);
+    _surface = VK_NULL_HANDLE;
+  }
+
+  if (_instance != VK_NULL_HANDLE) {
+    vkDestroyInstance(_instance, nullptr);
+    _instance = VK_NULL_HANDLE;
+  }
+
+  if (_window != nullptr) {
+    SDL_DestroyWindow(_window);
+    _window = nullptr;
+  }
+
+  SDL_Quit();
 }
 
 void VulkanEngine::createInstanceAndPhysicalDeviceAndQueue() {
@@ -723,12 +750,15 @@ void VulkanEngine::recreateSwapChain() {
   cleanupSwapChain();
 
   createSwapchain();
+  // createImageViews();
 }
 
 void VulkanEngine::cleanupSwapChain() {
   for (auto imageView : _swapchainImageViews) {
     vkDestroyImageView(_device, imageView, nullptr);
   }
+
+  _swapchainImageViews.clear();
 
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 }
