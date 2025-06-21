@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -69,5 +70,40 @@ struct Mesh {
       vkFreeMemory(device, indexBufferMemory, nullptr);
       indexBufferMemory = VK_NULL_HANDLE;
     }
+  }
+};
+
+struct Tile {
+  uint16_t type;
+};
+
+struct Tilemap {
+public:
+  std::vector<std::vector<Tile>> tiles;
+  int width;
+  int height;
+
+  Tilemap(int w, int h) : width(w), height(h) {
+    tiles.resize(height, std::vector<Tile>(width));
+
+    for (auto &row : tiles) {
+      for (auto &tile : row) {
+        tile.type = 0;
+      }
+    }
+  }
+
+  void setTile(int x, int y, uint16_t type) {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+      tiles[y][x].type = type;
+    }
+  }
+
+  Tile getTile(int x, int y) const {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+      return tiles[y][x];
+    }
+
+    return Tile{0};
   }
 };

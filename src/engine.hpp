@@ -190,4 +190,7 @@ private:
   void createTextureSampler(VkSampler &textureSampler);
 
   void createMeshDescriptorSet(Mesh &mesh);
+
+  void createTilemapMesh(const Tilemap &tilemap, const char *texturePath);
+  void createMap();
 };

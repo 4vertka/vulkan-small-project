@@ -55,6 +55,8 @@ void VulkanEngine::initVulkan() {
   createUniformBuffers();
   createDescriptorPool();
 
+  createMap();
+
   createAllMeshes();
 
   // createDescriptorSet();
@@ -1470,4 +1472,70 @@ void VulkanEngine::createMeshDescriptorSet(Mesh &mesh) {
   vkUpdateDescriptorSets(_device,
                          static_cast<uint32_t>(descriptorWrites.size()),
                          descriptorWrites.data(), 0, nullptr);
+}
+
+void VulkanEngine::createTilemapMesh(const Tilemap &tilemap,
+                                     const char *texturePath) {
+
+  std::vector<vertexData::Vertex> vertices;
+  std::vector<uint16_t> indices;
+
+  float tileSize = 1.0f;
+  int atlasColums = 16;
+  int atlasRows = 16;
+
+  glm::vec3 tileColor(1.0f, 1.0f, 1.0f);
+
+  for (int y = 0; y < tilemap.height; y++) {
+    for (int x = 0; x < tilemap.width; x++) {
+      Tile tile = tilemap.getTile(x, y);
+      if (tile.type == 0)
+        continue;
+
+      float u1 = (float)((tile.type - 1) % atlasColums) / atlasColums;
+      float v1 = (float)((tile.type - 1) / atlasColums) / atlasRows;
+      float u2 = u1 + 1.0f / atlasColums;
+      float v2 = v1 + 1.0f / atlasRows;
+
+      glm::vec2 pos1(x * tileSize - 0.5f, y * tileSize - 0.5f);
+      glm::vec2 pos2((x + 1) * tileSize - 0.5f, y * tileSize - 0.5f);
+      glm::vec2 pos3((x + 1) * tileSize - 0.5f, (y + 1) * tileSize - 0.5f);
+      glm::vec2 pos4(x * tileSize - 0.5f, (y + 1) * tileSize - 0.5f);
+
+      uint16_t baseIndex = static_cast<uint16_t>(vertices.size());
+
+      vertices.push_back({pos1, tileColor, {u1, v1}});
+      vertices.push_back({pos2, tileColor, {u2, v1}});
+      vertices.push_back({pos3, tileColor, {u2, v2}});
+      vertices.push_back({pos4, tileColor, {u1, v2}});
+
+      indices.push_back(baseIndex);
+      indices.push_back(static_cast<uint16_t>(baseIndex + 1));
+      indices.push_back(static_cast<uint16_t>(baseIndex + 2));
+      indices.push_back(baseIndex);
+      indices.push_back(static_cast<uint16_t>(baseIndex + 2));
+      indices.push_back(static_cast<uint16_t>(baseIndex + 3));
+    }
+  }
+
+  if (!vertices.empty()) {
+    createMesh(vertices, indices, glm::mat4(1.0f), glm::vec3(0.0f),
+               texturePath);
+  }
+}
+
+void VulkanEngine::createMap() {
+  Tilemap worldMap(10, 10);
+
+  for (int y = 0; y < 50; y++) {
+    for (int x = 0; x < 100; x++) {
+      worldMap.setTile(x, y, 1);
+
+      if (x > 30 && x < 70 && y > 10 && y < 20) {
+        worldMap.setTile(x, y, 2);
+      }
+    }
+  }
+
+  createTilemapMesh(worldMap, "../textures/statue-1275469_640.jpg");
 }
