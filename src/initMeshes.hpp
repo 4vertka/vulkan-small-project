@@ -26,6 +26,8 @@ struct Mesh {
   float rotation = 0.0f;
   glm::vec3 scale = glm::vec3(1.0f);
 
+  bool plyerMesh = false;
+
   void update(float deltaTime) {
     position += velocity * deltaTime;
     updateTransform();

@@ -148,7 +148,8 @@ private:
                   const std::vector<uint16_t> &indices,
                   const glm::mat4 &inittialTransform = glm::mat4(1.0f),
                   glm::vec3 position = glm::vec3(0.0f),
-                  const char *texturePath = "../textures/forest-2.png");
+                  const char *texturePath = "../textures/forest-2.png",
+                  bool playerMesh = false);
 
   void uploadToBuffer(const void *data, VkDeviceSize size, VkBuffer dstBuffer);
 

@@ -1054,13 +1054,15 @@ void VulkanEngine::createDescriptorPool() {
 void VulkanEngine::createMesh(const std::vector<vertexData::Vertex> &vertices,
                               const std::vector<uint16_t> &indices,
                               const glm::mat4 &inittialTransform,
-                              glm::vec3 position, const char *texturePath) {
+                              glm::vec3 position, const char *texturePath,
+                              bool playerMesh) {
 
   Mesh newMesh;
   newMesh.indexCount = static_cast<uint32_t>(indices.size());
   newMesh.transform = inittialTransform;
 
   newMesh.position = position;
+  newMesh.plyerMesh = playerMesh;
 
   VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
   createBuffer(vertexBufferSize,
@@ -1115,13 +1117,13 @@ void VulkanEngine::createAllMeshes() {
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 1.0f, 0.0f)) *
                  glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)),
-             glm::vec3(-2.0f, 1.0f, 0.0f), "../textures/forest-2.png");
+             glm::vec3(-2.0f, 1.0f, 0.0f), "../textures/forest-2.png", true);
 
   createMesh(vertexData::vertices, vertexData::indices,
              glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, 0.0f)) *
                  glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)),
-             glm::vec3(3.0f, -1.0f, 0.0f),
-             "../textures/statue-1275469_640.jpg");
+             glm::vec3(3.0f, -1.0f, 0.0f), "../textures/statue-1275469_640.jpg",
+             false);
 }
 
 void VulkanEngine::processInput(SDL_Event event) {
@@ -1136,9 +1138,12 @@ void VulkanEngine::processInput(SDL_Event event) {
   }
   if (_playerMode) {
     if (!_meshes.empty()) {
-      auto &playerMesh = _meshes[0];
-      _player2d.addMesh(playerMesh);
-      _player2d.playerMovement(event);
+      for (auto &playerMesh : _meshes) {
+        if (playerMesh.plyerMesh) {
+          _player2d.addMesh(playerMesh);
+          _player2d.playerMovement(event);
+        }
+      }
     }
   }
 }
@@ -1481,8 +1486,8 @@ void VulkanEngine::createTilemapMesh(const Tilemap &tilemap,
   std::vector<uint16_t> indices;
 
   float tileSize = 1.0f;
-  int atlasColums = 16;
-  int atlasRows = 16;
+  int atlasColums = 1;
+  int atlasRows = 1;
 
   glm::vec3 tileColor(1.0f, 1.0f, 1.0f);
 
@@ -1519,23 +1524,21 @@ void VulkanEngine::createTilemapMesh(const Tilemap &tilemap,
   }
 
   if (!vertices.empty()) {
-    createMesh(vertices, indices, glm::mat4(1.0f), glm::vec3(0.0f),
-               texturePath);
+    createMesh(vertices, indices, glm::mat4(1.0f), glm::vec3(0.0f), texturePath,
+               false);
   }
 }
 
 void VulkanEngine::createMap() {
-  Tilemap worldMap(10, 10);
+  int width = 10;
+  int height = 10;
+  Tilemap worldMap(width, height);
 
-  for (int y = 0; y < 50; y++) {
-    for (int x = 0; x < 100; x++) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
       worldMap.setTile(x, y, 1);
-
-      if (x > 30 && x < 70 && y > 10 && y < 20) {
-        worldMap.setTile(x, y, 2);
-      }
     }
   }
 
-  createTilemapMesh(worldMap, "../textures/statue-1275469_640.jpg");
+  createTilemapMesh(worldMap, "../textures/grass.jpg");
 }
