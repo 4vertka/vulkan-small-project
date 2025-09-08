@@ -1,5 +1,39 @@
-Vulkan 2D engine
-Implemented Mesh drawing
-2D Camera support
-Texture loaing
+# Vulkan 2D Engine
+
+A small experimental 2D engine built with [Vulkan](https://www.vulkan.org/).  
+The goal of this project is to learn Vulkan fundamentals while implementing a minimal engine that can render sprites, handle input, and manage a simple world.
+
+---
+
+## Features
+- [x] Basic Vulkan setup (instance, devices, swapchain, pipeline)
+- [x] 2D sprite rendering
+- [x] Camera movement
+- [x] Simple UI using ImGui
+- [ ] Texture loading improvements
+- [ ] Basic animation
+- [ ] Entity system
+
+---
+
+## Screenshot
+
 ![Screenshot](https://github.com/4vertka/vulkan-small-project/raw/main/Screenshot%20from%202025-06-25%2007-56-09.png)
+
+---
+
+## Build Instructions
+
+### Requirements
+- C++20 compiler
+- [Vulkan SDK]
+- [GLFW]
+- 
+### Build (Linux / Arch example)
+```bash
+git clone https://github.com/4vertka/vulkan-small-project.git
+cd vulkan-small-project
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+./vulkan-2d-engine
