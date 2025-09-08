@@ -27,7 +27,7 @@ A small 2D engine built with [Vulkan](https://www.vulkan.org/).
 - C++20 compiler
 - [Vulkan SDK]
 - [GLFW]
-- 
+  
 ### Build (Linux / Arch example)
 ```bash
 git clone https://github.com/4vertka/vulkan-small-project.git
