@@ -1,7 +1,6 @@
 # Vulkan 2D Engine
 
-A small experimental 2D engine built with [Vulkan](https://www.vulkan.org/).  
-The goal of this project is to learn Vulkan fundamentals while implementing a minimal engine that can render sprites, handle input, and manage a simple world.
+A small 2D engine built with [Vulkan](https://www.vulkan.org/).  
 
 ---
 
@@ -12,7 +11,7 @@ The goal of this project is to learn Vulkan fundamentals while implementing a mi
 - [x] Simple UI using ImGui
 - [ ] Texture loading improvements
 - [ ] Basic animation
-- [ ] Entity system
+- [x] Entity system
 
 ---
 
