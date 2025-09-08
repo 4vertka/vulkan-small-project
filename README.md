@@ -34,5 +34,5 @@ git clone https://github.com/4vertka/vulkan-small-project.git
 cd vulkan-small-project
 mkdir build && cd build
 cmake ..
-make -j$(nproc)
-./vulkan-2d-engine
+make
+./MyVulkanApp
